@@ -33,8 +33,8 @@ A frontend application for managing driver-route assignments with scheduling per
 
 ⚙️ Setup Instructions
 1. Clone the repo
-git clone 
-cd driver-scheduling-dashboard
+git clone https://github.com/arabeen100/Driver-Scheduling-Dashboard
+cd Driver-Scheduling-Dashboard
 
 2. Install dependencies
 npm install
@@ -53,11 +53,10 @@ npm run preview
 
 The app is deployed on Vercel:
 
-- Live Demo 👉
+- Live Demo 👉 https://driver-scheduling-dashboard.vercel.app/
 
-- GitHub Repository 👉 
+- GitHub Repository 👉 https://github.com/arabeen100/Driver-Scheduling-Dashboard
 
-(replace with your own links after deploying)
 
 📂 Project Structure
 src/
