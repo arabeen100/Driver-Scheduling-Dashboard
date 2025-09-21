@@ -5,33 +5,24 @@ const DAYS: Day[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 interface Props {
   drivers: Driver[];
+  setDrivers: React.Dispatch<React.SetStateAction<Driver[]>>;
   routes: Route[];
   setRoutes: React.Dispatch<React.SetStateAction<Route[]>>;
 }
 
-/**
- * Rules implemented here:
- * - A driver can be assigned to multiple routes across different days.
- * - A driver can only be assigned to ONE route per DAY.
- * - The UI for assigning enforces that (driver options exclude drivers already assigned on that selected day).
- */
-export default function Dashboard({ drivers, routes, setRoutes }: Props) {
+export default function Dashboard({ drivers, setDrivers, routes, setRoutes }: Props) {
   const [selectedDayPerRoute, setSelectedDayPerRoute] = useState<Record<string, Day | "">>({});
   const [routeSearch, setRouteSearch] = useState("");
   const [driverSearch, setDriverSearch] = useState("");
 
-  // Helper: check if a driver is already assigned on a day (across all routes)
   const isDriverAssignedOnDay = (driverId: string, day: Day) =>
     routes.some((r) => r.assignments.some((a) => a.driverId === driverId && a.day === day));
 
-  // Assign driver to route for a specific day, enforcing one-per-day rule
   const handleAssign = (routeId: string, driverId: string, day: Day) => {
     if (!day) {
       alert("Please select a day first.");
       return;
     }
-
-    // check if driver already has assignment on that day (on other route)
     if (isDriverAssignedOnDay(driverId, day)) {
       alert("This driver is already assigned to a route on that day.");
       return;
@@ -46,7 +37,6 @@ export default function Dashboard({ drivers, routes, setRoutes }: Props) {
     );
   };
 
-  // Remove a specific assignment (driver + day) from a route
   const handleRemoveAssignment = (routeId: string, driverId: string, day: Day) => {
     setRoutes((prev) =>
       prev.map((r) =>
@@ -57,7 +47,20 @@ export default function Dashboard({ drivers, routes, setRoutes }: Props) {
     );
   };
 
-  // For display: compute drivers filtered
+  const handleDeleteRoute = (routeId: string) => {
+    setRoutes((prev) => prev.filter((r) => r.id !== routeId));
+  };
+
+  const handleDeleteDriver = (driverId: string) => {
+    setDrivers((prev) => prev.filter((d) => d.id !== driverId));
+    setRoutes((prev) =>
+      prev.map((r) => ({
+        ...r,
+        assignments: r.assignments.filter((a) => a.driverId !== driverId),
+      }))
+    );
+  };
+
   const filteredDrivers = useMemo(
     () => drivers.filter((d) => d.name.toLowerCase().includes(driverSearch.toLowerCase())),
     [drivers, driverSearch]
@@ -91,11 +94,15 @@ export default function Dashboard({ drivers, routes, setRoutes }: Props) {
               <li key={route.id} className="p-3 border rounded">
                 <div className="flex items-center justify-between mb-2">
                   <div className="font-medium">{route.name}</div>
-                  <div className="text-sm text-gray-600">{route.assignments.length} assignment(s)</div>
+                  <button
+                    onClick={() => handleDeleteRoute(route.id)}
+                    className="bg-red-500 text-white px-2 py-1 rounded"
+                  >
+                    🗑️ Delete
+                  </button>
                 </div>
 
                 <div className="space-y-2">
-                  {/* existing assignments for route */}
                   {route.assignments.length === 0 && <div className="text-sm text-red-600">Unassigned</div>}
                   {route.assignments.map((a) => {
                     const driver = drivers.find((d) => d.id === a.driverId);
@@ -115,7 +122,6 @@ export default function Dashboard({ drivers, routes, setRoutes }: Props) {
                     );
                   })}
 
-                  {/* assign area: choose day then driver */}
                   <div className="flex gap-2 mt-2">
                     <select
                       value={selectedDayPerRoute[route.id] ?? ""}
@@ -124,9 +130,7 @@ export default function Dashboard({ drivers, routes, setRoutes }: Props) {
                     >
                       <option value="">Select day</option>
                       {DAYS.map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
+                        <option key={d} value={d}>{d}</option>
                       ))}
                     </select>
 
@@ -134,32 +138,21 @@ export default function Dashboard({ drivers, routes, setRoutes }: Props) {
                       onChange={(e) => {
                         const driverId = e.target.value;
                         const day = selectedDayPerRoute[route.id];
-                        if (!driverId) return;
-                        if (!day) {
-                          alert("Please select a day first.");
-                          e.currentTarget.value = "";
-                          return;
-                        }
+                        if (!driverId || !day) return alert("Select a day first"), e.currentTarget.value = "";
                         handleAssign(route.id, driverId, day);
-                        // reset driver select
                         e.currentTarget.value = "";
                       }}
                       className="w-1/2 border rounded p-2"
                       defaultValue=""
                     >
                       <option value="">+ Assign driver</option>
-                      {drivers
-                        .filter((d) => {
-                          const day = selectedDayPerRoute[route.id];
-                          if (!day) return true; // if no day selected show them (but the handler will require day)
-                          // show drivers not already assigned on that day (across all routes)
-                          return !isDriverAssignedOnDay(d.id, day);
-                        })
-                        .map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name}
-                          </option>
-                        ))}
+                      {drivers.filter((d) => {
+                        const day = selectedDayPerRoute[route.id];
+                        if (!day) return true;
+                        return !isDriverAssignedOnDay(d.id, day);
+                      }).map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -183,14 +176,21 @@ export default function Dashboard({ drivers, routes, setRoutes }: Props) {
           <ul className="space-y-2">
             {filteredDrivers.length === 0 && <li className="text-sm text-gray-500">No drivers found</li>}
             {filteredDrivers.map((d) => {
-              // compute days assigned for this driver across routes
-              const daysAssigned = routes.flatMap((r) => r.assignments.filter((a) => a.driverId === d.id).map((a) => a.day));
+              const daysAssigned = routes.flatMap((r) =>
+                r.assignments.filter((a) => a.driverId === d.id).map((a) => a.day)
+              );
               return (
                 <li key={d.id} className="p-2 border rounded flex justify-between items-center">
                   <div>
                     <div className="font-medium">{d.name}</div>
                     <div className="text-sm text-gray-600">{daysAssigned.length ? daysAssigned.join(", ") : "Available"} </div>
                   </div>
+                  <button
+                    onClick={() => handleDeleteDriver(d.id)}
+                    className="bg-red-500 text-white px-2 py-1 rounded"
+                  >
+                    🗑️ Delete
+                  </button>
                 </li>
               );
             })}

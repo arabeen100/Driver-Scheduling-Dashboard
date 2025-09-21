@@ -6,15 +6,8 @@ import CalendarView from "./components/CalendarView";
 import type { Driver, Route } from "./types";
 
 function App() {
-  const [drivers, setDrivers] = useState<Driver[]>([
-    // example seed (optional) — remove or keep
-    // { id: "d1", name: "Ahmed" },
-    // { id: "d2", name: "Mohamed" },
-  ]);
-  const [routes, setRoutes] = useState<Route[]>([
-    // example seed
-    // { id: "r1", name: "Route A", assignments: [] }
-  ]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [routes, setRoutes] = useState<Route[]>([]);
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -25,7 +18,7 @@ function App() {
         <RouteForm onAdd={(r) => setRoutes((p) => [...p, r])} />
       </div>
 
-      <Dashboard drivers={drivers}  routes={routes} setRoutes={setRoutes} />
+      <Dashboard drivers={drivers} setDrivers={setDrivers} routes={routes} setRoutes={setRoutes} />
 
       <CalendarView drivers={drivers} routes={routes} />
     </div>
